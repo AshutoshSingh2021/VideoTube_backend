@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.models.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
 
 const options = {
   httpOnly: true,
@@ -10,6 +11,11 @@ const options = {
 };
 
 const generateAccessAndRefreshToken = async (userId) => {
+  // find user
+  // generate access and refresh token
+  // update refresh token
+  // save refresh token
+  // return access and refresh token
   try {
     const user = await User.findById(userId);
     const accessToken = user.generateAccessToken();
@@ -149,6 +155,8 @@ const loginUser = AsyncHandler(async (req, res) => {
 });
 
 const logoutUser = AsyncHandler(async (req, res) => {
+  // find user and remove refresh token
+  // send response
   await User.findByIdAndUpdate(
     req.user._id,
     {
@@ -167,8 +175,53 @@ const logoutUser = AsyncHandler(async (req, res) => {
 });
 
 const refreshAccessToken = AsyncHandler(async (req, res) => {
+  // get incoming refresh token from request
+  // decode incoming refresh token
+  // find user in the database
+  // generate new access & refresh token
+  // send response
+
   const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
+
+  if (!incomingRefreshToken) {
+    throw new ApiError(401, "Unauthorized request.");
+  }
+
+  try {
+    const decodeToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+    const user = await User.findById(decodeToken?._id);
+
+    if (!user) {
+      throw new ApiError(401, "Invalid refresh token.");
+    }
+
+    if (incomingRefreshToken !== user?.refreshToken) {
+      throw new ApiError(401, "Refresh token is expired or used.");
+    }
+
+    const newTokens = await generateAccessAndRefreshToken(user._id);
+
+    return res
+      .status(200)
+      .cookie("accessToken", newTokens.accessToken, options)
+      .cookie("refreshToken", newTokens.refreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          {
+            accessToken: newTokens.accessToken,
+            refreshToken: newTokens.refreshToken,
+          },
+          "Access token Refreshed."
+        )
+      );
+  } catch (error) {
+    throw new ApiError(401, error?.message || "Invalid refresh token.");
+  }
 });
 
-export { registerUser, loginUser, logoutUser };
+export { registerUser, loginUser, logoutUser, refreshAccessToken };
