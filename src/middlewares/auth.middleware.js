@@ -4,6 +4,11 @@ import { AsyncHandler } from "../utils/AsyncHandler.js";
 import jwt from "jsonwebtoken";
 
 export const verifyJWT = AsyncHandler(async (req, _, next) => {
+  // get token from coodkies or header
+  // decode token
+  // get user from db - use id of decoded token
+  // add user to the req
+  // call next
   try {
     const token =
       req.cookies?.accessToken ||
